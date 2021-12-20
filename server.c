@@ -91,38 +91,39 @@ int main ()
     		// copil
     		close(sd);
 
-    		/* s-a realizat conexiunea, se astepta mesajul */
-    		bzero (msg, 100);
-    		printf ("[server]Asteptam mesajul...\n");
-    		fflush (stdout);
+			while(1){
+				/* s-a realizat conexiunea, se astepta mesajul */
+				bzero (msg, 100);
+				printf ("[server]Asteptam mesajul...\n");
+				fflush (stdout);
 
-    		/* citirea mesajului */
-    		if (read (client, msg, 100) <= 0)
-    		{
-    			perror ("[server]Eroare la read() de la client.\n");
-    			close (client);	/* inchidem conexiunea cu clientul */
-    			continue;		/* continuam sa ascultam */
-    		}
+				/* citirea mesajului */
+				if (read (client, msg, 100) <= 0)
+				{
+					perror ("[server]Eroare la read() de la client.\n");
+					close (client);	/* inchidem conexiunea cu clientul */
+					continue;		/* continuam sa ascultam */
+				}
 
-    		printf ("[server]Mesajul a fost receptionat...%s\n", msg);
+				printf ("[server]Mesajul a fost receptionat...%s\n", msg);
 
-    		/*pregatim mesajul de raspuns */
-    		bzero(msgrasp,100);
-    		strcat(msgrasp,"Hello ");
-    		strcat(msgrasp,msg);
+				/*pregatim mesajul de raspuns */
+				bzero(msgrasp,100);
+				strcat(msgrasp,"Hello ");
+				strcat(msgrasp,msg);
 
-    		printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
+				printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
 
-    		/* returnam mesajul clientului */
-    		if (write (client, msgrasp, 100) <= 0)
-    		{
-    			perror ("[server]Eroare la write() catre client.\n");
-    			continue;		/* continuam sa ascultam */
-    		}
-    		else
-    			printf ("[server]Mesajul a fost trasmis cu succes.\n");
-    		
+				/* returnam mesajul clientului */
+				if (write (client, msgrasp, 100) <= 0)
+				{
+					perror ("[server]Eroare la write() catre client.\n");
+					continue;		/* continuam sa ascultam */
+				}
+				else
+					printf ("[server]Mesajul a fost trasmis cu succes.\n");
+			}
     		/* am terminat cu acest client, inchidem conexiunea */
     		close (client);
     		exit(0);
