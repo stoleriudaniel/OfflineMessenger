@@ -24,7 +24,6 @@ int main (int argc, char *argv[])
   int sd;			// descriptorul de socket
   struct sockaddr_in server;	// structura folosita pentru conectare 
   char msg[100];		// mesajul trimis
-
   /* exista toate argumentele in linia de comanda? */
   if (argc != 3)
     {
@@ -59,27 +58,27 @@ int main (int argc, char *argv[])
 
   /* citirea mesajului */
   while(1){
-    bzero (msg, 100);
-    printf ("[client]Introduceti un nume: ");
-    fflush (stdout);
-    read (0, msg, 100);
-    
-    /* trimiterea mesajului la server */
-    if (write (sd, msg, 100) <= 0)
-      {
-        perror ("[client]Eroare la write() spre server.\n");
-        return errno;
-      }
-
     /* citirea raspunsului dat de server 
       (apel blocant pina cind serverul raspunde) */
+    bzero (msg, 100);
     if (read (sd, msg, 100) < 0)
       {
         perror ("[client]Eroare la read() de la server.\n");
         return errno;
       }
     /* afisam mesajul primit */
-    printf ("[client]Mesajul primit este: %s\n", msg);
+    printf ("[server] %s\n", msg);
+    printf("[client] ");
+    fflush (stdout);
+    bzero (msg, 100);
+    read (0, msg, 100);
+    msg[strlen(msg)-1]='\0';
+    /* trimiterea mesajului la server */
+    if (write (sd, msg, 100) <= 0)
+      {
+        perror ("[client]Eroare la write() spre server.\n");
+        return errno;
+      }
   }
   /* inchidem conexiunea, am terminat */
   close (sd);

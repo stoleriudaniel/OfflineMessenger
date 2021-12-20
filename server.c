@@ -21,8 +21,6 @@ int main ()
 {
     struct sockaddr_in server;	// structura folosita de server
     struct sockaddr_in from;
-    char msg[100];		//mesajul primit de la client
-    char msgrasp[100]=" ";        //mesaj de raspuns pentru client
     int sd;			//descriptorul de socket
 
     /* crearea unui socket */
@@ -91,38 +89,174 @@ int main ()
     		// copil
     		close(sd);
 
-			while(1){
-				/* s-a realizat conexiunea, se astepta mesajul */
-				bzero (msg, 100);
-				printf ("[server]Asteptam mesajul...\n");
-				fflush (stdout);
+			char mesaj[100];
+			char comanda[100];		//mesajul primit de la client
+			strcpy(mesaj,"Introduceti comanda:");
+			if (write (client, mesaj, 100) <= 0)
+			{
+				perror ("[server]Eroare la write() catre client.\n");
+				continue;		/* continuam sa ascultam */
+			}
+			else
+				printf ("[server]Mesajul a fost trasmis cu succes.\n");
 
+			while(1){
+
+				/* s-a realizat conexiunea, se astepta mesajul */
+				bzero (comanda, 100);
+				printf ("[server]Asteptam comanda...\n");
+				fflush (stdout);
 				/* citirea mesajului */
-				if (read (client, msg, 100) <= 0)
+				if (read (client, comanda, 100) <= 0)
 				{
 					perror ("[server]Eroare la read() de la client.\n");
 					close (client);	/* inchidem conexiunea cu clientul */
 					continue;		/* continuam sa ascultam */
 				}
 
-				printf ("[server]Mesajul a fost receptionat...%s\n", msg);
+				printf ("[server]Comanda a fost receptionata...%s\n", comanda);
 
 				/*pregatim mesajul de raspuns */
-				bzero(msgrasp,100);
-				strcat(msgrasp,"Hello ");
-				strcat(msgrasp,msg);
+				//REGISTER
+				printf("comanda:%s\n", comanda);
+				printf("sizeof(comanda):%ld\n", strlen(comanda));
+				if(strcmp(comanda,"REGISTER")==0){
+					printf("da, register");
+					char msgrasp[100]=" ";        //mesaj de raspuns pentru client
+					char nume[100];
+					char parola[100];
+					printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
-				printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
+					bzero(msgrasp,100);
+					bzero(nume,100);
+					bzero(parola,100);
+					strcpy(msgrasp,"Introduceti numele de utilizator:");
+					/* returnam mesajul clientului */
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
 
+					if (read (client, nume, 100) <= 0)
+					{
+						perror ("[server]Eroare la read() de la client.\n");
+						close (client);	/* inchidem conexiunea cu clientul */
+						continue;		/* continuam sa ascultam */
+					}
+					strcpy(msgrasp,"Introduceti parola:");
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
 
-				/* returnam mesajul clientului */
-				if (write (client, msgrasp, 100) <= 0)
-				{
-					perror ("[server]Eroare la write() catre client.\n");
-					continue;		/* continuam sa ascultam */
+					if (read (client, parola, 100) <= 0)
+					{
+						perror ("[server]Eroare la read() de la client.\n");
+						close (client);	/* inchidem conexiunea cu clientul */
+						continue;		/* continuam sa ascultam */
+					}
+					strcpy(msgrasp,"Inregistrat cu succes! Introduceti comanda:");
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+					printf("nume:%s\n",nume);
+					printf("parola:%s\n",parola);
+
 				}
-				else
-					printf ("[server]Mesajul a fost trasmis cu succes.\n");
+				else if(strcmp(comanda,"LOGIN")==0){
+					printf("da, login");
+					char msgrasp[100]=" ";        //mesaj de raspuns pentru client
+					char nume[100];
+					char parola[100];
+					printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
+
+					bzero(msgrasp,100);
+					bzero(nume,100);
+					bzero(parola,100);
+					strcpy(msgrasp,"Introduceti numele de utilizator:");
+					/* returnam mesajul clientului */
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+
+					if (read (client, nume, 100) <= 0)
+					{
+						perror ("[server]Eroare la read() de la client.\n");
+						close (client);	/* inchidem conexiunea cu clientul */
+						continue;		/* continuam sa ascultam */
+					}
+					strcpy(msgrasp,"Introduceti parola:");
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+
+					if (read (client, parola, 100) <= 0)
+					{
+						perror ("[server]Eroare la read() de la client.\n");
+						close (client);	/* inchidem conexiunea cu clientul */
+						continue;		/* continuam sa ascultam */
+					}
+					strcpy(msgrasp,"Autentificat cu succes! Introduceti comanda:");
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+					printf("nume:%s\n",nume);
+					printf("parola:%s\n",parola);
+
+				}
+				else if(strcmp(comanda,"EXIT")==0){
+					printf("da, login");
+					char msgrasp[100]=" ";        //mesaj de raspuns pentru client
+					printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
+
+					bzero(msgrasp,100);
+					strcpy(msgrasp,"exit");
+					/* returnam mesajul clientului */
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+				}
+				else {
+					char msgrasp[100]=" ";        //mesaj de raspuns pentru client
+					printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
+
+					bzero(msgrasp,100);
+					strcat(msgrasp,"Comanda invalida. Inercati din nou");
+					/* returnam mesajul clientului */
+					if (write (client, msgrasp, 100) <= 0)
+					{
+						perror ("[server]Eroare la write() catre client.\n");
+						continue;		/* continuam sa ascultam */
+					}
+					else
+						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+				}
 			}
     		/* am terminat cu acest client, inchidem conexiunea */
     		close (client);
