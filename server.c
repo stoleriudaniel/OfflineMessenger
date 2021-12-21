@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include "sqlite/sqlite3.h"
 /* portul folosit */
 #define PORT 2024
 
