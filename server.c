@@ -76,7 +76,6 @@ int existsUserInUsersTable(char* name){
 		{
 			char* nameFound=sqlite3_column_text(stmt,0);
 			printf("--nameFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
-			char numeUtv[20]; char parolaUtv[20];
 			if(strcmp(name,nameFound)==0){
 				printf("\nDa, gasit nume:%s\n",nameFound);
 				foundUser=1;
@@ -85,6 +84,28 @@ int existsUserInUsersTable(char* name){
 		sqlite3_finalize(stmt);
 	}
 	return foundUser;
+}
+
+int validAuthentication(char* name, char* password){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int valid = 0;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT name, password FROM Users WHERE name=?;",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,name,-1,NULL);
+		while(sqlite3_step(stmt)!=SQLITE_DONE)
+		{
+			char* nameFound=sqlite3_column_text(stmt,0);
+			char* passwordFound=sqlite3_column_text(stmt,1);
+			if(strcmp(name,nameFound)==0 && strcmp(password,passwordFound)==0){
+				printf("\nDa, nume gasit:%s\n",nameFound);
+				printf("\nDa, parola gasita:%s\n",passwordFound);
+				valid=1;
+			}
+		}
+		sqlite3_finalize(stmt);
+	}
+	return valid;
 }
 
 int main ()
@@ -189,7 +210,7 @@ int main ()
 				printf ("[server]Comanda a fost receptionata...%s\n", comanda);
 
 				/*pregatim mesajul de raspuns */
-				//REGISTER
+				//--------------------------------------------------------------REGISTER--------------------------------------------------------------
 				printf("comanda:%s\n", comanda);
 				printf("sizeof(comanda):%ld\n", strlen(comanda));
 				if(strcmp(comanda,"REGISTER")==0){
@@ -248,7 +269,7 @@ int main ()
 					else
 						printf ("[server]Mesajul a fost trasmis cu succes.\n");
 
-				}//LOGIN
+				}//--------------------------------------------------------------LOGIN--------------------------------------------------------------
 				else if(strcmp(comanda,"LOGIN")==0){
 					printf("da, login");
 					char msgrasp[100]=" ";        //mesaj de raspuns pentru client
@@ -290,7 +311,12 @@ int main ()
 						close (client);	/* inchidem conexiunea cu clientul */
 						continue;		/* continuam sa ascultam */
 					}
-					strcpy(msgrasp,"Autentificat cu succes! Introduceti comanda:");
+					if(validAuthentication(nume, parola)){
+						strcpy(msgrasp,"Autentificat cu succes! Introduceti comanda:");
+					}
+					else {
+						strcpy(msgrasp,"Autentificare esuata! Introduceti comanda:");
+					}
 					if (write (client, msgrasp, 100) <= 0)
 					{
 						perror ("[server]Eroare la write() catre client.\n");
@@ -299,7 +325,7 @@ int main ()
 					else
 						printf ("[server]Mesajul a fost trasmis cu succes.\n");
 
-				}
+				}////--------------------------------------------------------------EXIT--------------------------------------------------------------
 				else if(strcmp(comanda,"EXIT")==0){
 					printf("da, login");
 					char msgrasp[100]=" ";        //mesaj de raspuns pentru client
