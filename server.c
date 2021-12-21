@@ -18,6 +18,35 @@
 
 /* codul de eroare returnat de anumite apeluri */
 
+void createTables(){
+	char* err;
+	sqlite3* db;
+	sqlite3_stmt* stmt;
+	sqlite3_open("DataBase.db", &db);
+	int rc = sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Users(name varchar(100), password(100))", NULL, NULL, &err);
+	if(rc!=SQLITE_OK)
+	{
+		printf("eroare: %s", err);
+	}
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS NewMessages(numeDestinatar varchar(100), nameFrom varchar(100), idMessage INT, message varchar())", NULL, NULL, &err);
+	if(rc!=SQLITE_OK)
+	{
+		printf("eroare: %s", err);
+	}
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS RepliedMessages(name varchar(100), nameToReply varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
+	if(rc!=SQLITE_OK)
+	{
+		printf("eroare: %s", err);
+	}
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
+	if(rc!=SQLITE_OK)
+	{
+		printf("eroare: %s", err);
+	}
+}
+
+
+
 int main ()
 {
     struct sockaddr_in server;	// structura folosita de server
@@ -57,30 +86,8 @@ int main ()
     	return errno;
     }
 
-	char* err;
-	sqlite3* db;
-	sqlite3_stmt* stmt;
-	sqlite3_open("DataBase.db", &db);
-	int rc = sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Users(name varchar(100), password(100))", NULL, NULL, &err);
-	if(rc!=SQLITE_OK)
-	{
-		printf("eroare: %s", err);
-	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS NewMessages(numeDestinatar varchar(100), nameFrom varchar(100), idMessage INT, message varchar())", NULL, NULL, &err);
-	if(rc!=SQLITE_OK)
-	{
-		printf("eroare: %s", err);
-	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS RepliedMessages(name varchar(100), nameToReply varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
-	if(rc!=SQLITE_OK)
-	{
-		printf("eroare: %s", err);
-	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
-	if(rc!=SQLITE_OK)
-	{
-		printf("eroare: %s", err);
-	}
+	createTables();
+
     /* servim in mod concurent clientii... */
     while (1)
     {
