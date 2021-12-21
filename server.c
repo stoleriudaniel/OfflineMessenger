@@ -76,6 +76,11 @@ int main ()
 	{
 		printf("eroare: %s", err);
 	}
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
+	if(rc!=SQLITE_OK)
+	{
+		printf("eroare: %s", err);
+	}
     /* servim in mod concurent clientii... */
     while (1)
     {
