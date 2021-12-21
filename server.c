@@ -21,18 +21,19 @@
 void createTables(){
 	char* err;
 	sqlite3* db;
-	sqlite3_stmt* stmt;
+	//sqlite3_stmt* stmt;
 	sqlite3_open("DataBase.db", &db);
-	int rc = sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Users(name varchar(100), password(100))", NULL, NULL, &err);
+	int rc = sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Users(name varchar(100), password varchar(100))", NULL, NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
 	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS NewMessages(numeDestinatar varchar(100), nameFrom varchar(100), idMessage INT, message varchar())", NULL, NULL, &err);
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS NewMessages(name varchar(100), nameFrom varchar(100), idMessage INT, message varchar(100))", NULL, NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
 	}
+	
 	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS RepliedMessages(name varchar(100), nameToReply varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
@@ -45,7 +46,24 @@ void createTables(){
 	}
 }
 
-
+void addNewUser(char* name, char* password){
+	sqlite3 *db;
+	sqlite3_stmt * st;
+	printf("--name:%s strlen(name):%ld\n",name,strlen(name));
+	printf("--password:%s strlen(password):%ld\n",password,strlen(password));
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
+	{
+		char* sql = "INSERT INTO Users (name, password) VALUES (?, ?);";
+		int rc = sqlite3_prepare(db, sql, -1, &st, NULL);
+		if (rc == SQLITE_OK)
+		{
+			sqlite3_bind_text(st, 1, name, strlen(name), SQLITE_TRANSIENT);
+			sqlite3_bind_text(st, 2, password, strlen(password),  SQLITE_TRANSIENT);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	}
+}
 
 int main ()
 {
@@ -201,10 +219,9 @@ int main ()
 					}
 					else
 						printf ("[server]Mesajul a fost trasmis cu succes.\n");
-					printf("nume:%s\n",nume);
-					printf("parola:%s\n",parola);
+					addNewUser(nume,parola);
 
-				}
+				}//LOGIN
 				else if(strcmp(comanda,"LOGIN")==0){
 					printf("da, login");
 					char msgrasp[100]=" ";        //mesaj de raspuns pentru client
@@ -254,8 +271,6 @@ int main ()
 					}
 					else
 						printf ("[server]Mesajul a fost trasmis cu succes.\n");
-					printf("nume:%s\n",nume);
-					printf("parola:%s\n",parola);
 
 				}
 				else if(strcmp(comanda,"EXIT")==0){
