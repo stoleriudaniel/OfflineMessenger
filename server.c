@@ -65,6 +65,28 @@ void addNewUser(char* name, char* password){
 	}
 }
 
+int existsUserInUsersTable(char* name){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int foundUser = 0;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT name, password FROM Users WHERE name=?;",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,name,-1,NULL);
+		while(sqlite3_step(stmt)!=SQLITE_DONE)
+		{
+			char* nameFound=sqlite3_column_text(stmt,0);
+			printf("--nameFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
+			char numeUtv[20]; char parolaUtv[20];
+			if(strcmp(name,nameFound)==0){
+				printf("\nDa, gasit nume:%s\n",nameFound);
+				foundUser=1;
+			}
+		}
+		sqlite3_finalize(stmt);
+	}
+	return foundUser;
+}
+
 int main ()
 {
     struct sockaddr_in server;	// structura folosita de server
@@ -211,7 +233,13 @@ int main ()
 						close (client);	/* inchidem conexiunea cu clientul */
 						continue;		/* continuam sa ascultam */
 					}
-					strcpy(msgrasp,"Inregistrat cu succes! Introduceti comanda:");
+					if(existsUserInUsersTable(nume)){
+						strcpy(msgrasp,"Inregistrare esuata! Utilizatorul exista deja. Introduceti comanda:");	
+					}
+					else{
+						addNewUser(nume,parola);
+						strcpy(msgrasp,"Inregistrat cu succes! Introduceti comanda:");
+					}
 					if (write (client, msgrasp, 100) <= 0)
 					{
 						perror ("[server]Eroare la write() catre client.\n");
@@ -219,7 +247,6 @@ int main ()
 					}
 					else
 						printf ("[server]Mesajul a fost trasmis cu succes.\n");
-					addNewUser(nume,parola);
 
 				}//LOGIN
 				else if(strcmp(comanda,"LOGIN")==0){
