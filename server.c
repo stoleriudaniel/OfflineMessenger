@@ -57,6 +57,15 @@ int main ()
     	return errno;
     }
 
+	char* err;
+	sqlite3* db;
+	sqlite3_stmt* stmt;
+	sqlite3_open("DataBase.db", &db);
+	int rc = sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Users(nume varchar(100), parola(100))", NULL, NULL, &err);
+	if(rc!=SQLITE_OK)
+	{
+		printf("eroare: %s", err);
+	}
     /* servim in mod concurent clientii... */
     while (1)
     {
