@@ -39,7 +39,7 @@ void createTables(){
 	{
 		printf("eroare: %s", err);
 	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name varchar(100), message varchar(100))", NULL ,NULL, &err);
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name1 varchar(100), name2 varchar(100), nameFrom varchar(100), nameTo varchar(100), message varchar(100))", NULL ,NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
@@ -145,7 +145,7 @@ int existsNewMessages(char *name, char fromUsers[100][100]){
 	return usersNo;
 }
 
-int showNewMessages(char* name, char *nameFrom, char messages[100][100]){
+int getNewMessages(char* name, char *nameFrom, char messages[100][100]){
 	sqlite3 *db;
 	sqlite3_stmt * stmt;
 	int messagesNo=0;
@@ -185,6 +185,89 @@ void deleteNewMessages(char* name, char* nameFrom){
 			sqlite3_finalize(st);
 		}
 	}
+}
+
+void addTheNewMessagesToHistory(char* name, char *nameFrom){
+	//"CREATE TABLE IF NOT EXISTS NewMessages(name varchar(100), nameFrom varchar(100), message varchar(100))"
+	//"CREATE TABLE IF NOT EXISTS Messages(name varchar(100), nameFrom varchar(100), nameTo varchar(100), message varchar(100))"
+	char messages[100][100];
+	int messagesNo;
+	messagesNo = getNewMessages(name, nameFrom, messages);
+	printf("in add to history function: name:%s nameFrom:%s\n", name, nameFrom);
+	printf("messagesNo=%d, MESSAGES::::::\n", messagesNo);
+	for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
+		printf("msg: %s\n",messages[indexMessage]);
+	}
+	sqlite3 *db;
+	sqlite3_stmt * st;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
+	{
+		printf("in add to history function: name:%s nameFrom:%s\n", name, nameFrom);
+		for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
+			char* sql1 = "INSERT INTO Messages(name1, name2, nameFrom, nameTo, message) VALUES (?, ?, ?, ?, ?);";
+			int rc = sqlite3_prepare(db, sql1, -1, &st, NULL);
+			if (rc == SQLITE_OK)
+			{
+				sqlite3_bind_text(st, 1, name, strlen(name), SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 2, nameFrom, strlen(nameFrom), SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 3, nameFrom, strlen(nameFrom),  SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 4, "-", strlen("-"),  SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 5, messages[indexMessage], strlen(messages[indexMessage]),  SQLITE_TRANSIENT);
+				sqlite3_step(st);
+				sqlite3_finalize(st);
+			}
+		}
+		for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
+			char* sql2 = "INSERT INTO Messages(name1, name2, nameFrom, nameTo, message) VALUES (?, ?, ?, ?, ?);";
+			int rc = sqlite3_prepare(db, sql2, -1, &st, NULL);
+			if (rc == SQLITE_OK)
+			{
+				sqlite3_bind_text(st, 1, nameFrom, strlen(nameFrom), SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 2, name, strlen(name), SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 3, "-", strlen("-"), SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 4, name , strlen(name),  SQLITE_TRANSIENT);
+				sqlite3_bind_text(st, 5, messages[indexMessage], strlen(messages[indexMessage]),  SQLITE_TRANSIENT);
+				sqlite3_step(st);
+				sqlite3_finalize(st);
+			}
+		}
+	}
+}
+
+int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messages[50][100]){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int messagesNo=0;
+	printf("Hello, world!!! function_name11=%s_name22=%s\n",name1,name2);
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT message, nameFrom, nameTo FROM Messages WHERE name1=? AND name2=?;",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,name1,-1,NULL);
+		sqlite3_bind_text(stmt,2,name2,-1,NULL);
+		while(sqlite3_step(stmt)!=SQLITE_DONE)
+		{
+			char* message=sqlite3_column_text(stmt,0);
+			char* nameFrom=sqlite3_column_text(stmt,1);
+			char* nameTo=sqlite3_column_text(stmt,2);
+			printf("function_message:%s\n",message);
+			printf("--NewMessageFound:%s strlen(message):%ld\n",message,strlen(message));
+			if(strcmp(name2,nameFrom)==0){
+				strcpy(messages[messagesNo],"[");
+				strcat(messages[messagesNo],nameFrom);
+				strcat(messages[messagesNo],"] ");
+				strcat(messages[messagesNo], message);
+			} else if(strcmp(name2,nameTo)==0){
+				strcpy(messages[messagesNo],"[");
+				strcat(messages[messagesNo],"Me");
+				strcat(messages[messagesNo],"] ");
+				strcat(messages[messagesNo], message);
+			}
+			printf("************Message:%s\n",message);
+			messagesNo++;
+		}
+		sqlite3_finalize(stmt);
+	}
+	printf("_function_messagesNo=%d\n",messagesNo);
+	return messagesNo;
 }
 
 int main ()
@@ -589,8 +672,9 @@ int main ()
 							close (client);	/* inchidem conexiunea cu clientul */
 							continue;		/* continuam sa ascultam */
 						}
-						messagesNo=showNewMessages(myUsername,nameFrom,messages);
-						printf("showNewMessages()=%d\n",messagesNo);
+						messagesNo=getNewMessages(myUsername,nameFrom,messages);
+						addTheNewMessagesToHistory(myUsername,nameFrom);
+						printf("getNewMessages()=%d\n",messagesNo);
 						if(messagesNo){
 							deleteNewMessages(myUsername,nameFrom);
 							bzero(msgrasp,1024);
@@ -628,15 +712,43 @@ int main ()
 						else
 							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
-					////--------------------------------------------------------------SHOW_CONVERSATION_HISTROY--------------------------------------------------------------
-					else if(strcmp(comanda,"SHOW_CONVERSATION_HISTROY")==0){
-						char msgrasp[100]=" ";        //mesaj de raspuns pentru client
+					////--------------------------------------------------------------SHOW_CONVERSATION_HISTORY--------------------------------------------------------------
+					else if(strcmp(comanda,"SHOW_CONVERSATION_HISTORY")==0){
+						char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
+						char name2[100];
+						char messages[50][100];
+						int messagesNo;
 						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
-						bzero(msgrasp,100);
-						strcpy(msgrasp,"show_conversation_history");
+						bzero(msgrasp,1000);
+						strcpy(msgrasp,"Enter the username to see conversation history:");
 						/* returnam mesajul clientului */
-						if (write (client, msgrasp, 100) <= 0)
+						if (write (client, msgrasp, 1000) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						if (read (client, name2, 100) <= 0)
+						{
+							perror ("[server]Eroare la read() de la client.\n");
+							close (client);	/* inchidem conexiunea cu clientul */
+							continue;		/* continuam sa ascultam */
+						}
+						messagesNo=getMessagesHistoryBetweenName1AndName2(myUsername,name2,messages);
+						printf("In ( If Conversation ):\n");
+						printf("______messagesNo:%d\n",messagesNo);
+						bzero(msgrasp,1000);
+						for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
+							strcat(msgrasp,"\n");
+							strcat(msgrasp,messages[indexMessage]);
+						}
+						printf("&&&&&&&&&&&&mesages[0]=%s\n",messages[0]);
+						printf("&&&&&&&&&&&&mesages[1]=%s\n",messages[1]);
+						printf("\n\nmsgrasp:\n%s\n\n",msgrasp);
+						/* returnam mesajul clientului */
+						if (write (client, msgrasp, 1000) <= 0)
 						{
 							perror ("[server]Eroare la write() catre client.\n");
 							continue;		/* continuam sa ascultam */
