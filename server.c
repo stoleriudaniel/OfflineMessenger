@@ -168,6 +168,25 @@ int showNewMessages(char* name, char *nameFrom, char messages[100][100]){
 	return messagesNo;
 }
 
+void deleteNewMessages(char* name, char* nameFrom){
+	sqlite3 *db;
+	sqlite3_stmt * st;
+	printf("--name:%s strlen(name):%ld\n",name,strlen(name));
+	printf("--nameFrom:%s strlen(nameFrom):%ld\n",nameFrom,strlen(nameFrom));
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
+	{
+		char* sql = "DELETE FROM NewMessages WHERE name=? AND nameFrom=?;";
+		int rc = sqlite3_prepare(db, sql, -1, &st, NULL);
+		if (rc == SQLITE_OK)
+		{
+			sqlite3_bind_text(st,1,name,-1,NULL);
+			sqlite3_bind_text(st,2,nameFrom,-1,NULL);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	}
+}
+
 int main ()
 {
     struct sockaddr_in server;	// structura folosita de server
@@ -570,11 +589,11 @@ int main ()
 							close (client);	/* inchidem conexiunea cu clientul */
 							continue;		/* continuam sa ascultam */
 						}
-						printf("nameFrom=%s\n",nameFrom);
 						messagesNo=showNewMessages(myUsername,nameFrom,messages);
 						printf("showNewMessages()=%d\n",messagesNo);
-						bzero(msgrasp,1024);
 						if(messagesNo){
+							deleteNewMessages(myUsername,nameFrom);
+							bzero(msgrasp,1024);
 							for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
 								strcat(msgrasp,"\n");
 								strcat(msgrasp,messages[indexMessage]);
