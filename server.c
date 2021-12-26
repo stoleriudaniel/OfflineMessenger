@@ -28,18 +28,18 @@ void createTables(){
 	{
 		printf("eroare: %s", err);
 	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS NewMessages(name varchar(100), nameFrom varchar(100), idMessage INT, message varchar(100))", NULL, NULL, &err);
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS NewMessages(name varchar(100), nameFrom varchar(100), message varchar(100))", NULL, NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
 	}
 	
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS RepliedMessages(name varchar(100), nameToReply varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS RepliedMessages(name varchar(100), nameToReply varchar(100), message varchar(100))", NULL ,NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
 	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name varchar(100), idMessage INT, message varchar(100))", NULL ,NULL, &err);
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name varchar(100), message varchar(100))", NULL ,NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
@@ -106,6 +106,66 @@ int validAuthentication(char* name, char* password){
 		sqlite3_finalize(stmt);
 	}
 	return valid;
+}
+
+void sendMessageFromPerson1ToPerson2(char* name1, char* name2, char* message){
+	sqlite3 *db;
+	sqlite3_stmt * st;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
+	{
+		char* sql = "INSERT INTO NewMessages(name, nameFrom, message) VALUES (?, ?, ?);";
+		int rc = sqlite3_prepare(db, sql, -1, &st, NULL);
+		if (rc == SQLITE_OK)
+		{
+			sqlite3_bind_text(st, 1, name2, strlen(name2), SQLITE_TRANSIENT);
+			sqlite3_bind_text(st, 2, name1, strlen(name1),  SQLITE_TRANSIENT);
+			sqlite3_bind_text(st, 3, message, strlen(message),  SQLITE_TRANSIENT);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	}
+}
+
+int existsNewMessages(char *name, char fromUsers[100][100]){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int usersNo=0;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT DISTINCT name, nameFrom FROM NewMessages WHERE name=?;",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,name,-1,NULL);
+		while(sqlite3_step(stmt)!=SQLITE_DONE)
+		{
+			char* nameFound=sqlite3_column_text(stmt,1);
+			printf("--nameNewMessageFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
+			strcpy(fromUsers[usersNo],nameFound);
+			usersNo++;
+		}
+		sqlite3_finalize(stmt);
+	}
+	return usersNo;
+}
+
+int showNewMessages(char* name, char *nameFrom, char messages[100][100]){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int messagesNo=0;
+	printf("function_name=%s_nameFrom=%s\n",name,nameFrom);
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT message FROM NewMessages WHERE name=? AND nameFrom=?;",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,name,-1,NULL);
+		sqlite3_bind_text(stmt,2,nameFrom,-1,NULL);
+		while(sqlite3_step(stmt)!=SQLITE_DONE)
+		{
+			char* message=sqlite3_column_text(stmt,0);
+			printf("function_message:%s\n",message);
+			printf("--NewMessageFound:%s strlen(message):%ld\n",message,strlen(message));
+			strcpy(messages[messagesNo],message);
+			messagesNo++;
+		}
+		sqlite3_finalize(stmt);
+	}
+	printf("_function_messagesNo=%d\n",messagesNo);
+	return messagesNo;
 }
 
 int main ()
@@ -191,8 +251,8 @@ int main ()
 				continue;		/* continuam sa ascultam */
 			}
 			else
-				printf ("[server]Mesajul a fost trasmis cu succes.\n");
-			int loggedIn=0;
+				printf ("[server]Mesajul a fost transmis cu succes.\n");
+			int loggedIn=0; char myUsername[100];
 			while(1){
 
 				/* s-a realizat conexiunea, se astepta mesajul */
@@ -231,7 +291,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 
 					if (read (client, nume, 100) <= 0)
 					{
@@ -246,7 +306,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 
 					if (read (client, parola, 100) <= 0)
 					{
@@ -267,7 +327,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 
 				}//--------------------------------------------------------------LOGIN--------------------------------------------------------------
 				else if(strcmp(comanda,"LOGIN")==0){
@@ -288,7 +348,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 
 					if (read (client, nume, 100) <= 0)
 					{
@@ -303,7 +363,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 
 					if (read (client, parola, 100) <= 0)
 					{
@@ -314,6 +374,7 @@ int main ()
 					if(validAuthentication(nume, parola)){
 						strcpy(msgrasp,"Autentificat cu succes! Introduceti comanda:");
 						loggedIn=1;
+						strcpy(myUsername,nume);
 					}
 					else {
 						strcpy(msgrasp,"Autentificare esuata! Introduceti comanda:");
@@ -324,7 +385,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 
 				}////--------------------------------------------------------------EXIT--------------------------------------------------------------
 				else if(strcmp(comanda,"EXIT")==0){
@@ -341,7 +402,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 				}
 				////--------------------------------------------------------------INVALID--------------------------------------------------------------
 				else {
@@ -357,7 +418,7 @@ int main ()
 						continue;		/* continuam sa ascultam */
 					}
 					else
-						printf ("[server]Mesajul a fost trasmis cu succes.\n");
+						printf ("[server]Mesajul a fost transmis cu succes.\n");
 				}
 				while(loggedIn){
 					bzero (comanda, 100);
@@ -372,11 +433,12 @@ int main ()
 					}
 					////--------------------------------------------------------------SEND_MESSAGE--------------------------------------------------------------
 					if(strcmp(comanda,"SEND_MESSAGE")==0){
+						char nameToSend[100];
 						char msgrasp[100]=" ";        //mesaj de raspuns pentru client
 						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
 						bzero(msgrasp,100);
-						strcpy(msgrasp,"send_message");
+						strcpy(msgrasp,"Enter the username to send message:");
 						/* returnam mesajul clientului */
 						if (write (client, msgrasp, 100) <= 0)
 						{
@@ -384,15 +446,96 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						bzero(nameToSend, 100);
+						if (read (client, nameToSend, 100) <= 0)
+						{
+							perror ("[server]Eroare la read() de la client.\n");
+							close (client);	/* inchidem conexiunea cu clientul */
+							continue;		/* continuam sa ascultam */
+						}
+						while(!existsUserInUsersTable(nameToSend)){
+							bzero(msgrasp,100);
+							strcpy(msgrasp,"Username invalid! Enter the username to send message:");
+							/* returnam mesajul clientului */
+							if (write (client, msgrasp, 100) <= 0)
+							{
+								perror ("[server]Eroare la write() catre client.\n");
+								continue;		/* continuam sa ascultam */
+							}
+							else
+								printf ("[server]Mesajul a fost transmis cu succes.\n");
+							bzero(nameToSend, 100);
+							if (read (client, nameToSend, 100) <= 0)
+							{
+								perror ("[server]Eroare la read() de la client.\n");
+								close (client);	/* inchidem conexiunea cu clientul */
+								continue;		/* continuam sa ascultam */
+							}
+						}
+						bzero(msgrasp,100);
+						strcpy(msgrasp,"Write the message:");
+						if (write (client, msgrasp, 100) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						bzero(msgrasp, 100);
+						if (read (client, msgrasp, 100) <= 0)
+						{
+							perror ("[server]Eroare la read() de la client.\n");
+							close (client);	/* inchidem conexiunea cu clientul */
+							continue;		/* continuam sa ascultam */
+						}
+						while(strlen(msgrasp)==0){
+							bzero(msgrasp,100);
+							strcpy(msgrasp,"Invalid message! Write the message:");
+							if (write (client, msgrasp, 100) <= 0)
+							{
+								perror ("[server]Eroare la write() catre client.\n");
+								continue;		/* continuam sa ascultam */
+							}
+							else
+								printf ("[server]Mesajul a fost transmis cu succes.\n");
+							bzero(msgrasp, 100);
+							if (read (client, msgrasp, 100) <= 0)
+							{
+								perror ("[server]Eroare la read() de la client.\n");
+								close (client);	/* inchidem conexiunea cu clientul */
+								continue;		/* continuam sa ascultam */
+							}
+						}
+						sendMessageFromPerson1ToPerson2(myUsername,nameToSend,msgrasp);
+						bzero(msgrasp,100);
+						strcpy(msgrasp,"The message has been sent.");
+						if (write (client, msgrasp, 100) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 					////--------------------------------------------------------------NEW_MESSAGES--------------------------------------------------------------
 					else if(strcmp(comanda,"NEW_MESSAGES")==0){
 						char msgrasp[100]=" ";        //mesaj de raspuns pentru client
+						char fromUsers[100][100];
 						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
 						bzero(msgrasp,100);
-						strcpy(msgrasp,"new_messages");
+						int usersNo=existsNewMessages(myUsername,fromUsers);
+						if(usersNo==0){
+							strcpy(msgrasp,"You don't have new messages.");
+						}
+						else {
+							strcpy(msgrasp,"You have new messages from: ");
+							for(int index=0; index<usersNo; index++){
+								strcat(msgrasp, fromUsers[index]);
+								strcat(msgrasp, " ");
+							}
+						}
 						/* returnam mesajul clientului */
 						if (write (client, msgrasp, 100) <= 0)
 						{
@@ -400,15 +543,18 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 					////--------------------------------------------------------------SHOW_NEW_MESSAGES--------------------------------------------------------------
 					else if(strcmp(comanda,"SHOW_NEW_MESSAGES")==0){
 						char msgrasp[100]=" ";        //mesaj de raspuns pentru client
+						char messages[100][100];
+						char nameFrom[100];
+						int messagesNo=0;
 						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
 						bzero(msgrasp,100);
-						strcpy(msgrasp,"show_new_messages");
+						strcpy(msgrasp, "Enter the username to see new messages:");
 						/* returnam mesajul clientului */
 						if (write (client, msgrasp, 100) <= 0)
 						{
@@ -416,7 +562,36 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						bzero(nameFrom, 100);
+						if (read (client, nameFrom, 100) <= 0)
+						{
+							perror ("[server]Eroare la read() de la client.\n");
+							close (client);	/* inchidem conexiunea cu clientul */
+							continue;		/* continuam sa ascultam */
+						}
+						printf("nameFrom=%s\n",nameFrom);
+						messagesNo=showNewMessages(myUsername,nameFrom,messages);
+						printf("showNewMessages()=%d\n",messagesNo);
+						bzero(msgrasp,1024);
+						if(messagesNo){
+							for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
+								strcat(msgrasp,"\n");
+								strcat(msgrasp,messages[indexMessage]);
+							}
+							//strcat(msgrasp,"\n");
+						}
+						else {
+							strcpy(msgrasp,"You don't have new messages from this user.");
+						}
+						/* returnam mesajul clientului */
+						if (write (client, msgrasp, 100) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 					////--------------------------------------------------------------REPLY_MESSAGE--------------------------------------------------------------
 					else if(strcmp(comanda,"REPLY_MESSAGE")==0){
@@ -432,7 +607,7 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 					////--------------------------------------------------------------SHOW_CONVERSATION_HISTROY--------------------------------------------------------------
 					else if(strcmp(comanda,"SHOW_CONVERSATION_HISTROY")==0){
@@ -448,7 +623,7 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 					////--------------------------------------------------------------LOGOUT--------------------------------------------------------------
 					else if(strcmp(comanda,"LOGOUT")==0){
@@ -464,7 +639,7 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 						loggedIn=0;
 					}
 					////--------------------------------------------------------------EXIT--------------------------------------------------------------
@@ -481,7 +656,7 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 					////--------------------------------------------------------------INVALID--------------------------------------------------------------
 					else {
@@ -497,7 +672,7 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						else
-							printf ("[server]Mesajul a fost trasmis cu succes.\n");
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 				}
 			}
