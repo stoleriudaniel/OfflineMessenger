@@ -23,7 +23,7 @@ int main (int argc, char *argv[])
 {
   int sd;			// descriptorul de socket
   struct sockaddr_in server;	// structura folosita pentru conectare 
-  char msg[1000];		// mesajul trimis
+  char msg[100];		// mesajul trimis
   /* exista toate argumentele in linia de comanda? */
   if (argc != 3)
     {
@@ -60,8 +60,8 @@ int main (int argc, char *argv[])
   while(1){
     /* citirea raspunsului dat de server 
       (apel blocant pina cind serverul raspunde) */
-    bzero (msg, 1000);
-    if (read (sd, msg, 1000) < 0)
+    bzero (msg, 100);
+    if (read (sd, msg, 100) < 0)
       {
         perror ("[client]Eroare la read() de la server.\n");
         return errno;
@@ -70,11 +70,11 @@ int main (int argc, char *argv[])
     printf ("[server] %s\n", msg);
     printf("[client] ");
     fflush (stdout);
-    bzero (msg, 1000);
-    read (0, msg, 1000);
+    bzero (msg, 100);
+    read (0, msg, 100);
     msg[strlen(msg)-1]='\0';
     /* trimiterea mesajului la server */
-    if (write (sd, msg, 1000) <= 0)
+    if (write (sd, msg, 100) <= 0)
       {
         perror ("[client]Eroare la write() spre server.\n");
         return errno;

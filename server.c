@@ -1,4 +1,4 @@
- /* servTcpConc.c - Exemplu de server TCP concurent
+/* servTcpConc.c - Exemplu de server TCP concurent
     Asteapta un nume de la clienti; intoarce clientului sirul
     "Hello nume".
     */
@@ -714,16 +714,16 @@ int main ()
 					}
 					////--------------------------------------------------------------SHOW_CONVERSATION_HISTORY--------------------------------------------------------------
 					else if(strcmp(comanda,"SHOW_CONVERSATION_HISTORY")==0){
-						char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
+						char msgrasp[100]=" ";        //mesaj de raspuns pentru client
 						char name2[100];
 						char messages[50][100];
 						int messagesNo;
 						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
-						bzero(msgrasp,1000);
+						bzero(msgrasp,100);
 						strcpy(msgrasp,"Enter the username to see conversation history:");
 						/* returnam mesajul clientului */
-						if (write (client, msgrasp, 1000) <= 0)
+						if (write (client, msgrasp, 100) <= 0)
 						{
 							perror ("[server]Eroare la write() catre client.\n");
 							continue;		/* continuam sa ascultam */
@@ -748,7 +748,7 @@ int main ()
 						printf("&&&&&&&&&&&&mesages[1]=%s\n",messages[1]);
 						printf("\n\nmsgrasp:\n%s\n\n",msgrasp);
 						/* returnam mesajul clientului */
-						if (write (client, msgrasp, 1000) <= 0)
+						if (write (client, msgrasp, 100) <= 0)
 						{
 							perror ("[server]Eroare la write() catre client.\n");
 							continue;		/* continuam sa ascultam */
