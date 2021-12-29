@@ -1,8 +1,3 @@
-/* servTcpConc.c - Exemplu de server TCP concurent
-    Asteapta un nume de la clienti; intoarce clientului sirul
-    "Hello nume".
-    */
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -610,6 +605,23 @@ int main ()
 							}
 						}
 						sendMessageFromPerson1ToPerson2(myUsername,nameToSend,msgrasp);
+						//int messagesNo=getNewMessages(myUsername,nameFrom,messages);
+						//addTheNewMessagesToHistory(nameToSend,myUsername);
+						char messages[50][100];
+						int messagesNo=getNewMessages(nameToSend,myUsername,messages);
+						addTheNewMessagesToHistory(nameToSend,myUsername);
+						printf("getNewMessages()=%d\n",messagesNo);
+						/*
+						if(messagesNo){
+							deleteNewMessages(nameToSend,myUsername);
+							bzero(msgrasp,1000);
+							for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
+								strcat(msgrasp,"\n");
+								strcat(msgrasp,messages[indexMessage]);
+							}
+							//strcat(msgrasp,"\n");
+						}
+						*/
 						bzero(msgrasp,1000);
 						strcpy(msgrasp,"The message has been sent.");
 						if (write (client, msgrasp, 1000) <= 0)
@@ -623,7 +635,7 @@ int main ()
 					////--------------------------------------------------------------NEW_MESSAGES--------------------------------------------------------------
 					else if(strcmp(comanda,"NEW_MESSAGES")==0){
 						char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
-						char fromUsers[100][100];
+						char fromUsers[10][100];
 						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
 						bzero(msgrasp,1000);
@@ -666,18 +678,18 @@ int main ()
 						else
 							printf ("[server]Mesajul a fost transmis cu succes.\n");
 						bzero(nameFrom, 1000);
-						if (read (client, nameFrom, 100) <= 0)
+						if (read (client, nameFrom, 1000) <= 0)
 						{
 							perror ("[server]Eroare la read() de la client.\n");
 							close (client);	/* inchidem conexiunea cu clientul */
 							continue;		/* continuam sa ascultam */
 						}
 						messagesNo=getNewMessages(myUsername,nameFrom,messages);
-						addTheNewMessagesToHistory(myUsername,nameFrom);
+						//addTheNewMessagesToHistory(myUsername,nameFrom);
 						printf("getNewMessages()=%d\n",messagesNo);
 						if(messagesNo){
 							deleteNewMessages(myUsername,nameFrom);
-							bzero(msgrasp,1024);
+							bzero(msgrasp,1000);
 							for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
 								strcat(msgrasp,"\n");
 								strcat(msgrasp,messages[indexMessage]);
@@ -744,6 +756,7 @@ int main ()
 							strcat(msgrasp,"\n");
 							strcat(msgrasp,messages[indexMessage]);
 						}
+						deleteNewMessages(myUsername,name2);
 						printf("&&&&&&&&&&&&mesages[0]=%s\n",messages[0]);
 						printf("&&&&&&&&&&&&mesages[1]=%s\n",messages[1]);
 						printf("\n\nmsgrasp:\n%s\n\n",msgrasp);
