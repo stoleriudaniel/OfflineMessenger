@@ -270,7 +270,7 @@ int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messag
 	int messagesNo=0;
 	printf("Hello, world!!! function_name11=%s_name22=%s\n",name1,name2);
 	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
-		sqlite3_prepare_v2(db,"SELECT message, nameFrom, nameTo, rowid FROM Messages WHERE name1=? AND name2=?;",-1,&stmt,0);
+		sqlite3_prepare_v2(db,"SELECT message, nameFrom, nameTo, messageNo FROM Messages WHERE name1=? AND name2=?;",-1,&stmt,0);
 		sqlite3_bind_text(stmt,1,name1,-1,NULL);
 		sqlite3_bind_text(stmt,2,name2,-1,NULL);
 		while(sqlite3_step(stmt)!=SQLITE_DONE)
@@ -278,7 +278,7 @@ int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messag
 			char* message=sqlite3_column_text(stmt,0);
 			char* nameFrom=sqlite3_column_text(stmt,1);
 			char* nameTo=sqlite3_column_text(stmt,2);
-			char* rowId=sqlite3_column_text(stmt,3);
+			int messageNo=sqlite3_column_int(stmt,3);
 			printf("function_message:%s\n",message);
 			printf("--NewMessageFound:%s strlen(message):%ld\n",message,strlen(message));
 			if(strcmp(name2,nameFrom)==0){
@@ -290,8 +290,12 @@ int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messag
 				strcat(messages[messagesNo],"Me");
 				strcat(messages[messagesNo],"; ");
 			}
+			int length = snprintf( NULL, 0, "%d", messageNo);
+			char* messageNoSTR = malloc( length + 1 );
+			snprintf( messageNoSTR, length + 1, "%d", messageNo );
+
 			strcat(messages[messagesNo],"IDmsg:");
-			strcat(messages[messagesNo],rowId);
+			strcat(messages[messagesNo],messageNoSTR);
 			strcat(messages[messagesNo],"]");
 			strcat(messages[messagesNo], message);
 			printf("************Message:%s\n",message);
