@@ -50,7 +50,7 @@ int main (int argc, char *argv[])
       perror ("[client]Eroare la connect().\n");
       return errno;
     }
-
+  int exit=0;
   /* citirea mesajului */
   while(1){
     /* citirea raspunsului dat de server 
@@ -63,6 +63,10 @@ int main (int argc, char *argv[])
       }
     /* afisam mesajul primit */
     printf ("[server] %s\n", msg);
+    if(strcmp(msg,"exit")==0){
+      exit=1;
+      break;
+    }
     printf("[client] ");
     fflush (stdout);
     bzero (msg, 1000);
@@ -70,10 +74,10 @@ int main (int argc, char *argv[])
     msg[strlen(msg)-1]='\0';
     /* trimiterea mesajului la server */
     if (write (sd, msg, 1000) <= 0)
-      {
-        perror ("[client]Eroare la write() spre server.\n");
-        return errno;
-      }
+    {
+      perror ("[client]Eroare la write() spre server.\n");
+      return errno;
+    }
   }
   /* inchidem conexiunea, am terminat */
   close (sd);

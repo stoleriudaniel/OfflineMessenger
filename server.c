@@ -23,18 +23,17 @@ void createTables(){
 	{
 		printf("eroare: %s", err);
 	}
+	rc = sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS LoggedUsers(name varchar(100));", NULL, NULL, &err);
+	if(rc!=SQLITE_OK)
+	{
+		printf("eroare: %s", err);
+	}
 	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS NewMessages(name varchar(100), nameFrom varchar(100), message varchar(100), messageNo int);", NULL, NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
 	}
-	
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS RepliedMessages(name varchar(100), nameToReply varchar(100), message varchar(100));", NULL ,NULL, &err);
-	if(rc!=SQLITE_OK)
-	{
-		printf("eroare: %s", err);
-	}
-	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name1 varchar(100), name2 varchar(100), nameFrom varchar(100), nameTo varchar(100), message varchar(100), messageNo int);", NULL ,NULL, &err);
+	rc=sqlite3_exec(db,"CREATE TABLE IF NOT EXISTS Messages(name1 varchar(100), name2 varchar(100), nameFrom varchar(100), nameTo varchar(100), message varchar(100), messageNo int, repliedToMessageNo int);", NULL ,NULL, &err);
 	if(rc!=SQLITE_OK)
 	{
 		printf("eroare: %s", err);
@@ -81,6 +80,72 @@ int existsUserInUsersTable(char* name){
 	return foundUser;
 }
 
+int userLogged(char* username){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int userLogged = 0;
+	
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT name FROM LoggedUsers WHERE name=?;",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,username,-1,NULL);
+		while(sqlite3_step(stmt)!=SQLITE_DONE)
+		{
+			char* nameFound=sqlite3_column_text(stmt,0);
+			printf("--nameFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
+			if(strcmp(username,nameFound)==0){
+				printf("\nDa, gasit nume:%s\n",nameFound);
+				userLogged=1;
+			}
+		}
+		sqlite3_finalize(stmt);
+	}
+	
+	return userLogged;
+}
+
+void addLoggedUser(char* name){
+	
+	sqlite3 *db;
+	sqlite3_stmt * st;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
+	{
+		char* sql = "INSERT INTO LoggedUsers (name) VALUES (?);";
+		int rc = sqlite3_prepare(db, sql, -1, &st, NULL);
+		if (rc == SQLITE_OK)
+		{
+			sqlite3_bind_text(st, 1, name, strlen(name), SQLITE_TRANSIENT);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	}
+	
+}
+
+void removeLoggedUser(char* name){
+	
+	sqlite3 *db;
+	sqlite3_stmt * st;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
+	{
+		char* sql = "DELETE FROM LoggedUsers WHERE name=?;";
+		int rc = sqlite3_prepare(db, sql, -1, &st, NULL);
+		if (rc == SQLITE_OK)
+		{
+			sqlite3_bind_text(st,1,name,-1,NULL);
+			sqlite3_step(st);
+			sqlite3_finalize(st);
+		}
+	}
+	
+}
+
+int validID(char* name1, char* name2, int id){
+	int idmax = getMaximumIDValueMsgBetweenPerson1AndPerson2(name1, name2);
+	if(idmax>=id)
+		return 1;
+	return 0;
+}
+
 int validAuthentication(char* name, char* password){
 	sqlite3 *db;
 	sqlite3_stmt * stmt;
@@ -122,6 +187,58 @@ void sendMessageFromPerson1ToPerson2(char* name1, char* name2, char* message){
 			sqlite3_step(st);
 			sqlite3_finalize(st);
 		}
+	}
+}
+
+void replyMessage(char* name1, char* name2, char* message, int idToReply){
+	char messages[100][100]; 
+	int idRows[100];
+	int messagesNo;
+	messagesNo = getNewMessages(name1, name2, messages, idRows);
+	printf("in add to history function: name:%s nameFrom:%s\n", name1, name2);
+	printf("messagesNo=%d, MESSAGES::::::\n", messagesNo);
+	for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
+		printf("msg: %s\n",messages[indexMessage]);
+	}
+	sqlite3 *db;
+	sqlite3_stmt * st1;
+	sqlite3_stmt * st2;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
+	{
+		//printf("in add to history function: name:%s nameFrom:%s\n", name, nameFrom);
+			int messageIDNo=getMaximumIDValueMsgBetweenPerson1AndPerson2(name1,name2);
+			int newMessageIDNoINT = messageIDNo + 1;
+			printf("###IN ADD THE NEW MESSAGES:\n");
+			if(idRows[messagesNo-1]>messageIDNo){
+				char* sql1 = "INSERT INTO Messages(name1, name2, nameFrom, nameTo, message, messageNo, repliedToMessageNo) VALUES (?, ?, ?, ?, ?, ?, ?);";
+				int rc = sqlite3_prepare(db, sql1, -1, &st1, NULL);
+				if (rc == SQLITE_OK)
+				{
+					sqlite3_bind_text(st1, 1, name1, strlen(name1), SQLITE_TRANSIENT);
+					sqlite3_bind_text(st1, 2, name2, strlen(name2), SQLITE_TRANSIENT);
+					sqlite3_bind_text(st1, 3, "-", strlen("-"),  SQLITE_TRANSIENT);
+					sqlite3_bind_text(st1, 4, name2, strlen(name2),  SQLITE_TRANSIENT);
+					sqlite3_bind_text(st1, 5, message, strlen(message),  SQLITE_TRANSIENT);
+					sqlite3_bind_int(st1, 6, newMessageIDNoINT);
+					sqlite3_bind_int(st1, 7, idToReply);
+					sqlite3_step(st1);
+					sqlite3_finalize(st1);
+				}
+				char* sql2 = "INSERT INTO Messages(name1, name2, nameFrom, nameTo, message, messageNo, repliedToMessageNo) VALUES (?, ?, ?, ?, ?, ?, ?);";
+				int rc1 = sqlite3_prepare(db, sql2, -1, &st2, NULL);
+				if (rc1 == SQLITE_OK)
+				{
+					sqlite3_bind_text(st2, 1, name2, strlen(name2), SQLITE_TRANSIENT);
+					sqlite3_bind_text(st2, 2, name1, strlen(name1), SQLITE_TRANSIENT);
+					sqlite3_bind_text(st2, 3, name1 , strlen(name1),  SQLITE_TRANSIENT);
+					sqlite3_bind_text(st2, 4, "-", strlen("-"), SQLITE_TRANSIENT);
+					sqlite3_bind_text(st2, 5, message, strlen(message),  SQLITE_TRANSIENT);
+					sqlite3_bind_int(st2, 6, newMessageIDNoINT);
+					sqlite3_bind_int(st2, 7, idToReply);
+					sqlite3_step(st2);
+					sqlite3_finalize(st2);
+				}
+			}
 	}
 }
 
@@ -270,7 +387,7 @@ int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messag
 	int messagesNo=0;
 	printf("Hello, world!!! function_name11=%s_name22=%s\n",name1,name2);
 	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
-		sqlite3_prepare_v2(db,"SELECT message, nameFrom, nameTo, messageNo FROM Messages WHERE name1=? AND name2=?;",-1,&stmt,0);
+		sqlite3_prepare_v2(db,"SELECT message, nameFrom, nameTo, messageNo, repliedToMessageNo FROM Messages WHERE name1=? AND name2=?;",-1,&stmt,0);
 		sqlite3_bind_text(stmt,1,name1,-1,NULL);
 		sqlite3_bind_text(stmt,2,name2,-1,NULL);
 		while(sqlite3_step(stmt)!=SQLITE_DONE)
@@ -279,6 +396,11 @@ int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messag
 			char* nameFrom=sqlite3_column_text(stmt,1);
 			char* nameTo=sqlite3_column_text(stmt,2);
 			int messageNo=sqlite3_column_int(stmt,3);
+			int repliedID=-1;
+			if(sqlite3_column_type(stmt,4)==SQLITE_NULL){
+				repliedID=-1;
+			}
+			else repliedID=sqlite3_column_int(stmt,4);
 			printf("function_message:%s\n",message);
 			printf("--NewMessageFound:%s strlen(message):%ld\n",message,strlen(message));
 			if(strcmp(name2,nameFrom)==0){
@@ -296,7 +418,18 @@ int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messag
 
 			strcat(messages[messagesNo],"IDmsg:");
 			strcat(messages[messagesNo],messageNoSTR);
-			strcat(messages[messagesNo],"]");
+			if(repliedID!=-1){
+				strcat(messages[messagesNo],"; RepliedToIDmsg:");
+				int l = snprintf( NULL, 0, "%d", repliedID);
+				char* repliedIDstring = malloc( length + 1 );
+				snprintf( repliedIDstring, length + 1, "%d", repliedID );
+				strcat(messages[messagesNo], repliedIDstring);
+				strcat(messages[messagesNo],"]");
+			}
+			else {
+				strcat(messages[messagesNo],"]");
+			}
+			strcat(messages[messagesNo]," ");
 			strcat(messages[messagesNo], message);
 			printf("************Message:%s\n",message);
 			messagesNo++;
@@ -391,7 +524,7 @@ int main ()
 			}
 			else
 				printf ("[server]Mesajul a fost transmis cu succes.\n");
-			int loggedIn=0; char myUsername[100];
+			int loggedIn=0; char myUsername[100]; int exitCommand=0;
 			while(1){
 
 				/* s-a realizat conexiunea, se astepta mesajul */
@@ -510,10 +643,11 @@ int main ()
 						close (client);	/* inchidem conexiunea cu clientul */
 						continue;		/* continuam sa ascultam */
 					}
-					if(validAuthentication(nume, parola) && strlen(nume)<=100 && strlen(parola)<=100){
+					if(validAuthentication(nume, parola) && strlen(nume)<=100 && strlen(parola)<=100 && !userLogged(nume)){
 						strcpy(msgrasp,"Autentificat cu succes! Introduceti comanda:");
 						loggedIn=1;
 						strcpy(myUsername,nume);
+						addLoggedUser(nume);
 					}
 					else {
 						strcpy(msgrasp,"Autentificare esuata! Introduceti comanda:");
@@ -542,6 +676,11 @@ int main ()
 					}
 					else
 						printf ("[server]Mesajul a fost transmis cu succes.\n");
+					removeLoggedUser(myUsername);
+					loggedIn=0;
+					close (client);
+					exitCommand=1;
+					break;
 				}
 				////--------------------------------------------------------------INVALID--------------------------------------------------------------
 				else {
@@ -752,22 +891,6 @@ int main ()
 						else
 							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
-					////--------------------------------------------------------------REPLY_MESSAGE--------------------------------------------------------------
-					else if(strcmp(comanda,"REPLY_MESSAGE")==0){
-						char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
-						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
-
-						bzero(msgrasp,1000);
-						strcpy(msgrasp,"reply_message");
-						/* returnam mesajul clientului */
-						if (write (client, msgrasp, 1000) <= 0)
-						{
-							perror ("[server]Eroare la write() catre client.\n");
-							continue;		/* continuam sa ascultam */
-						}
-						else
-							printf ("[server]Mesajul a fost transmis cu succes.\n");
-					}
 					////--------------------------------------------------------------SHOW_CONVERSATION_HISTORY--------------------------------------------------------------
 					else if(strcmp(comanda,"SHOW_CONVERSATION_HISTORY")==0){
 						char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
@@ -816,6 +939,135 @@ int main ()
 						else
 							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
+					////--------------------------------------------------------------REPLY_MESSAGE--------------------------------------------------------------
+					else if(strcmp(comanda,"REPLY_MESSAGE")==0){
+						char nameToSend[1000];
+						char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
+						char idToReply[1000];
+						printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
+
+						bzero(msgrasp,1000);
+						strcpy(msgrasp,"Enter the username to send reply:");
+						/* returnam mesajul clientului */
+						if (write (client, msgrasp, 1000) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						bzero(nameToSend, 1000);
+						if (read (client, nameToSend, 1000) <= 0)
+						{
+							perror ("[server]Eroare la read() de la client.\n");
+							close (client);	/* inchidem conexiunea cu clientul */
+							continue;		/* continuam sa ascultam */
+						}
+						while(!existsUserInUsersTable(nameToSend)){
+							bzero(msgrasp,1000);
+							strcpy(msgrasp,"Username invalid! Enter the username to reply message:");
+							/* returnam mesajul clientului */
+							if (write (client, msgrasp, 1000) <= 0)
+							{
+								perror ("[server]Eroare la write() catre client.\n");
+								continue;		/* continuam sa ascultam */
+							}
+							else
+								printf ("[server]Mesajul a fost transmis cu succes.\n");
+							bzero(nameToSend, 1000);
+							if (read (client, nameToSend, 1000) <= 0)
+							{
+								perror ("[server]Eroare la read() de la client.\n");
+								close (client);	/* inchidem conexiunea cu clientul */
+								continue;		/* continuam sa ascultam */
+							}
+						}
+
+
+
+						bzero(msgrasp,1000);
+						strcpy(msgrasp,"Enter the ID message to reply:");
+						/* returnam mesajul clientului */
+						if (write (client, msgrasp, 1000) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						bzero(idToReply, 1000);
+						if (read (client, idToReply, 1000) <= 0)
+						{
+							perror ("[server]Eroare la read() de la client.\n");
+							close (client);	/* inchidem conexiunea cu clientul */
+							continue;		/* continuam sa ascultam */
+						}
+
+						while(!validID(myUsername,nameToSend,atoi(msgrasp))){
+							bzero(msgrasp,1000);
+							strcpy(msgrasp,"ID invalid! Enter the ID to reply message:");
+							/* returnam mesajul clientului */
+							if (write (client, msgrasp, 1000) <= 0)
+							{
+								perror ("[server]Eroare la write() catre client.\n");
+								continue;		/* continuam sa ascultam */
+							}
+							else
+								printf ("[server]Mesajul a fost transmis cu succes.\n");
+							bzero(idToReply, 1000);
+							if (read (client, idToReply, 1000) <= 0)
+							{
+								perror ("[server]Eroare la read() de la client.\n");
+								close (client);	/* inchidem conexiunea cu clientul */
+								continue;		/* continuam sa ascultam */
+							}
+						}
+						
+						bzero(msgrasp, 1000);
+						strcpy(msgrasp,"Enter the message:");
+						if (write (client, msgrasp, 1000) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						if (read (client, msgrasp, 1000) <= 0)
+						{
+							perror ("[server]Eroare la read() de la client.\n");
+							close (client);	/* inchidem conexiunea cu clientul */
+							continue;		/* continuam sa ascultam */
+						}
+						while(strlen(msgrasp)==0){
+							bzero(msgrasp,1000);
+							strcpy(msgrasp,"Invalid message! Write the message:");
+							if (write (client, msgrasp, 1000) <= 0)
+							{
+								perror ("[server]Eroare la write() catre client.\n");
+								continue;		/* continuam sa ascultam */
+							}
+							else
+								printf ("[server]Mesajul a fost transmis cu succes.\n");
+							bzero(msgrasp, 1000);
+							if (read (client, msgrasp, 1000) <= 0)
+							{
+								perror ("[server]Eroare la read() de la client.\n");
+								close (client);	/* inchidem conexiunea cu clientul */
+								continue;		/* continuam sa ascultam */
+							}
+						}
+						sendMessageFromPerson1ToPerson2(myUsername,nameToSend,msgrasp);
+						replyMessage(myUsername,nameToSend,msgrasp,atoi(idToReply));
+						bzero(msgrasp,1000);
+						strcpy(msgrasp,"Succesfuly replied!");
+						if (write (client, msgrasp, 1000) <= 0)
+						{
+							perror ("[server]Eroare la write() catre client.\n");
+							continue;		/* continuam sa ascultam */
+						}
+						else
+							printf ("[server]Mesajul a fost transmis cu succes.\n");
+					}
 					////--------------------------------------------------------------LOGOUT--------------------------------------------------------------
 					else if(strcmp(comanda,"LOGOUT")==0){
 						char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
@@ -831,6 +1083,7 @@ int main ()
 						}
 						else
 							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						removeLoggedUser(myUsername);
 						loggedIn=0;
 					}
 					////--------------------------------------------------------------EXIT--------------------------------------------------------------
@@ -848,6 +1101,11 @@ int main ()
 						}
 						else
 							printf ("[server]Mesajul a fost transmis cu succes.\n");
+						removeLoggedUser(myUsername);
+						loggedIn=0;
+						close (client);
+						exitCommand=1;
+						break;
 					}
 					////--------------------------------------------------------------INVALID--------------------------------------------------------------
 					else {
@@ -866,8 +1124,12 @@ int main ()
 							printf ("[server]Mesajul a fost transmis cu succes.\n");
 					}
 				}
+				if(exitCommand){
+					break;
+				}
 			}
     		/* am terminat cu acest client, inchidem conexiunea */
+			printf("close(client);");
     		close (client);
     		exit(0);
     	}
