@@ -43,8 +43,6 @@ void createTables(){
 void addNewUser(char* name, char* password){
 	sqlite3 *db;
 	sqlite3_stmt * st;
-	printf("--name:%s strlen(name):%ld\n",name,strlen(name));
-	printf("--password:%s strlen(password):%ld\n",password,strlen(password));
 	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
 	{
 		char* sql = "INSERT INTO Users (name, password) VALUES (?, ?);";
@@ -68,10 +66,8 @@ int existsUserInUsersTable(char* name){
 		sqlite3_bind_text(stmt,1,name,-1,NULL);
 		while(sqlite3_step(stmt)!=SQLITE_DONE)
 		{
-			char* nameFound=sqlite3_column_text(stmt,0);
-			printf("--nameFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
+			const char* nameFound=sqlite3_column_text(stmt,0);
 			if(strcmp(name,nameFound)==0){
-				printf("\nDa, gasit nume:%s\n",nameFound);
 				foundUser=1;
 			}
 		}
@@ -90,10 +86,8 @@ int userLogged(char* username){
 		sqlite3_bind_text(stmt,1,username,-1,NULL);
 		while(sqlite3_step(stmt)!=SQLITE_DONE)
 		{
-			char* nameFound=sqlite3_column_text(stmt,0);
-			printf("--nameFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
+			const char* nameFound=sqlite3_column_text(stmt,0);
 			if(strcmp(username,nameFound)==0){
-				printf("\nDa, gasit nume:%s\n",nameFound);
 				userLogged=1;
 			}
 		}
@@ -139,6 +133,23 @@ void removeLoggedUser(char* name){
 	
 }
 
+int getMaximumIDValueMsgBetweenPerson1AndPerson2(char* name1, char* name2){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int rowsNo;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT COUNT(*) FROM Messages WHERE ((name1=? AND name2=?) OR (name1=? AND name2=?));",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,name1,-1,NULL);
+		sqlite3_bind_text(stmt,2,name2,-1,NULL);
+		sqlite3_bind_text(stmt,3,name2,-1,NULL);
+		sqlite3_bind_text(stmt,4,name1,-1,NULL);
+		sqlite3_step(stmt);
+		rowsNo=sqlite3_column_int(stmt,0);
+		sqlite3_finalize(stmt);
+	}
+	return rowsNo/2;
+}
+
 int validID(char* name1, char* name2, int id){
 	int idmax = getMaximumIDValueMsgBetweenPerson1AndPerson2(name1, name2);
 	if(idmax>=id)
@@ -155,11 +166,9 @@ int validAuthentication(char* name, char* password){
 		sqlite3_bind_text(stmt,1,name,-1,NULL);
 		while(sqlite3_step(stmt)!=SQLITE_DONE)
 		{
-			char* nameFound=sqlite3_column_text(stmt,0);
-			char* passwordFound=sqlite3_column_text(stmt,1);
+			const char* nameFound=sqlite3_column_text(stmt,0);
+			const char* passwordFound=sqlite3_column_text(stmt,1);
 			if(strcmp(name,nameFound)==0 && strcmp(password,passwordFound)==0){
-				printf("\nDa, nume gasit:%s\n",nameFound);
-				printf("\nDa, parola gasita:%s\n",passwordFound);
 				valid=1;
 			}
 		}
@@ -181,8 +190,6 @@ void sendMessageFromPerson1ToPerson2(char* name1, char* name2, char* message){
 			sqlite3_bind_text(st, 2, name1, strlen(name1),  SQLITE_TRANSIENT);
 			sqlite3_bind_text(st, 3, message, strlen(message),  SQLITE_TRANSIENT);
 			int messageNo = getMaximumIDValueMsgBetweenPerson1AndPerson2(name1, name2) + 1;
-			printf("\n\n###IN SEND MESSAGE: insert new id(+1):%d\n",messageNo);
-			printf("MAX_ID in send message=%d\n",messageNo);
 			sqlite3_bind_int(st,4,messageNo);
 			sqlite3_step(st);
 			sqlite3_finalize(st);
@@ -190,25 +197,38 @@ void sendMessageFromPerson1ToPerson2(char* name1, char* name2, char* message){
 	}
 }
 
+int getNewMessages(char* name, char *nameFrom, char messages[100][100], int idRows[100]){
+	sqlite3 *db;
+	sqlite3_stmt * stmt;
+	int messagesNo=0;
+	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
+		sqlite3_prepare_v2(db,"SELECT message, messageNo FROM NewMessages WHERE name=? AND nameFrom=?;",-1,&stmt,0);
+		sqlite3_bind_text(stmt,1,name,-1,NULL);
+		sqlite3_bind_text(stmt,2,nameFrom,-1,NULL);
+		while(sqlite3_step(stmt)!=SQLITE_DONE)
+		{
+			const char* message=sqlite3_column_text(stmt,0);
+			idRows[messagesNo]=sqlite3_column_int(stmt,1);
+			strcpy(messages[messagesNo],message);
+			messagesNo++;
+		}
+		sqlite3_finalize(stmt);
+	}
+	return messagesNo;
+}
+
 void replyMessage(char* name1, char* name2, char* message, int idToReply){
 	char messages[100][100]; 
 	int idRows[100];
 	int messagesNo;
 	messagesNo = getNewMessages(name1, name2, messages, idRows);
-	printf("in add to history function: name:%s nameFrom:%s\n", name1, name2);
-	printf("messagesNo=%d, MESSAGES::::::\n", messagesNo);
-	for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
-		printf("msg: %s\n",messages[indexMessage]);
-	}
 	sqlite3 *db;
 	sqlite3_stmt * st1;
 	sqlite3_stmt * st2;
 	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
 	{
-		//printf("in add to history function: name:%s nameFrom:%s\n", name, nameFrom);
 			int messageIDNo=getMaximumIDValueMsgBetweenPerson1AndPerson2(name1,name2);
 			int newMessageIDNoINT = messageIDNo + 1;
-			printf("###IN ADD THE NEW MESSAGES:\n");
 			if(idRows[messagesNo-1]>messageIDNo){
 				char* sql1 = "INSERT INTO Messages(name1, name2, nameFrom, nameTo, message, messageNo, repliedToMessageNo) VALUES (?, ?, ?, ?, ?, ?, ?);";
 				int rc = sqlite3_prepare(db, sql1, -1, &st1, NULL);
@@ -251,8 +271,7 @@ int existsNewMessages(char *name, char fromUsers[100][100]){
 		sqlite3_bind_text(stmt,1,name,-1,NULL);
 		while(sqlite3_step(stmt)!=SQLITE_DONE)
 		{
-			char* nameFound=sqlite3_column_text(stmt,1);
-			printf("--nameNewMessageFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
+			const char* nameFound=sqlite3_column_text(stmt,1);
 			strcpy(fromUsers[usersNo],nameFound);
 			usersNo++;
 		}
@@ -261,35 +280,9 @@ int existsNewMessages(char *name, char fromUsers[100][100]){
 	return usersNo;
 }
 
-int getNewMessages(char* name, char *nameFrom, char messages[100][100], int idRows[100]){
-	sqlite3 *db;
-	sqlite3_stmt * stmt;
-	int messagesNo=0;
-	printf("function_name=%s_nameFrom=%s\n",name,nameFrom);
-	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
-		sqlite3_prepare_v2(db,"SELECT message, messageNo FROM NewMessages WHERE name=? AND nameFrom=?;",-1,&stmt,0);
-		sqlite3_bind_text(stmt,1,name,-1,NULL);
-		sqlite3_bind_text(stmt,2,nameFrom,-1,NULL);
-		while(sqlite3_step(stmt)!=SQLITE_DONE)
-		{
-			char* message=sqlite3_column_text(stmt,0);
-			idRows[messagesNo]=sqlite3_column_int(stmt,1);
-			printf("function_message:%s\n",message);
-			printf("--NewMessageFound:%s strlen(message):%ld\n",message,strlen(message));
-			strcpy(messages[messagesNo],message);
-			messagesNo++;
-		}
-		sqlite3_finalize(stmt);
-	}
-	printf("_function_messagesNo=%d\n",messagesNo);
-	return messagesNo;
-}
-
 void deleteNewMessages(char* name, char* nameFrom){
 	sqlite3 *db;
 	sqlite3_stmt * st;
-	printf("--name:%s strlen(name):%ld\n",name,strlen(name));
-	printf("--nameFrom:%s strlen(nameFrom):%ld\n",nameFrom,strlen(nameFrom));
 	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
 	{
 		char* sql = "DELETE FROM NewMessages WHERE name=? AND nameFrom=?;";
@@ -304,27 +297,6 @@ void deleteNewMessages(char* name, char* nameFrom){
 	}
 }
 
-int getMaximumIDValueMsgBetweenPerson1AndPerson2(char* name1, char* name2){
-	sqlite3 *db;
-	sqlite3_stmt * stmt;
-	int rowsNo;
-	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
-		sqlite3_prepare_v2(db,"SELECT COUNT(*) FROM Messages WHERE ((name1=? AND name2=?) OR (name1=? AND name2=?));",-1,&stmt,0);
-		sqlite3_bind_text(stmt,1,name1,-1,NULL);
-		sqlite3_bind_text(stmt,2,name2,-1,NULL);
-		sqlite3_bind_text(stmt,3,name2,-1,NULL);
-		sqlite3_bind_text(stmt,4,name1,-1,NULL);
-		sqlite3_step(stmt);
-		rowsNo=sqlite3_column_int(stmt,0);
-		//printf("--nameNewMessageFound:%s strlen(nameFound):%ld\n",nameFound,strlen(nameFound));
-		//strcpy(fromUsers[usersNo],nameFound);
-		//usersNo++;
-		sqlite3_finalize(stmt);
-	}
-	printf("###IN GET MAXIMUM VALUE:return %d\n\n\n",(rowsNo/2));
-	return rowsNo/2;
-}
-
 void addTheNewMessagesToHistory(char* name, char *nameFrom){
 	//"CREATE TABLE IF NOT EXISTS NewMessages(name varchar(100), nameFrom varchar(100), message varchar(100))"
 	//"CREATE TABLE IF NOT EXISTS Messages(name1 varchar(100), name2 varchar(100), nameFrom varchar(100), nameTo varchar(100), message varchar(100), messageNo int)"
@@ -332,22 +304,14 @@ void addTheNewMessagesToHistory(char* name, char *nameFrom){
 	int idRows[100];
 	int messagesNo;
 	messagesNo = getNewMessages(name, nameFrom, messages, idRows);
-	printf("in add to history function: name:%s nameFrom:%s\n", name, nameFrom);
-	printf("messagesNo=%d, MESSAGES::::::\n", messagesNo);
-	for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
-		printf("msg: %s\n",messages[indexMessage]);
-	}
 	sqlite3 *db;
 	sqlite3_stmt * st1;
 	sqlite3_stmt * st2;
 	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK)
 	{
-		printf("in add to history function: name:%s nameFrom:%s\n", name, nameFrom);
 		for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
 			int messageIDNo=getMaximumIDValueMsgBetweenPerson1AndPerson2(name,nameFrom);
 			int newMessageIDNoINT = messageIDNo + 1;
-			printf("###IN ADD THE NEW MESSAGES:\n");
-			printf("idrows[indexMessage]=%d > messageIDNo=%d\n\n\n",idRows[indexMessage],messageIDNo);
 			if(idRows[indexMessage]>messageIDNo){
 				char* sql1 = "INSERT INTO Messages(name1, name2, nameFrom, nameTo, message, messageNo) VALUES (?, ?, ?, ?, ?, ?);";
 				int rc = sqlite3_prepare(db, sql1, -1, &st1, NULL);
@@ -378,31 +342,27 @@ void addTheNewMessagesToHistory(char* name, char *nameFrom){
 			}
 		}
 	}
-	printf("END FCT ADDNEWMESSAGES\n");
 }
 
 int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messages[50][100]){
 	sqlite3 *db;
 	sqlite3_stmt * stmt;
 	int messagesNo=0;
-	printf("Hello, world!!! function_name11=%s_name22=%s\n",name1,name2);
 	if (sqlite3_open("DataBase.db", &db) == SQLITE_OK){
 		sqlite3_prepare_v2(db,"SELECT message, nameFrom, nameTo, messageNo, repliedToMessageNo FROM Messages WHERE name1=? AND name2=?;",-1,&stmt,0);
 		sqlite3_bind_text(stmt,1,name1,-1,NULL);
 		sqlite3_bind_text(stmt,2,name2,-1,NULL);
 		while(sqlite3_step(stmt)!=SQLITE_DONE)
 		{
-			char* message=sqlite3_column_text(stmt,0);
-			char* nameFrom=sqlite3_column_text(stmt,1);
-			char* nameTo=sqlite3_column_text(stmt,2);
+			const char* message=sqlite3_column_text(stmt,0);
+			const char* nameFrom=sqlite3_column_text(stmt,1);
+			const char* nameTo=sqlite3_column_text(stmt,2);
 			int messageNo=sqlite3_column_int(stmt,3);
 			int repliedID=-1;
 			if(sqlite3_column_type(stmt,4)==SQLITE_NULL){
 				repliedID=-1;
 			}
 			else repliedID=sqlite3_column_int(stmt,4);
-			printf("function_message:%s\n",message);
-			printf("--NewMessageFound:%s strlen(message):%ld\n",message,strlen(message));
 			if(strcmp(name2,nameFrom)==0){
 				strcpy(messages[messagesNo],"[");
 				strcat(messages[messagesNo],nameFrom);
@@ -431,12 +391,10 @@ int getMessagesHistoryBetweenName1AndName2(char* name1, char* name2, char messag
 			}
 			strcat(messages[messagesNo]," ");
 			strcat(messages[messagesNo], message);
-			printf("************Message:%s\n",message);
 			messagesNo++;
 		}
 		sqlite3_finalize(stmt);
 	}
-	printf("_function_messagesNo=%d\n",messagesNo);
 	return messagesNo;
 }
 
@@ -543,10 +501,7 @@ int main ()
 
 				/*pregatim mesajul de raspuns */
 				//--------------------------------------------------------------REGISTER--------------------------------------------------------------
-				printf("comanda:%s\n", comanda);
-				printf("sizeof(comanda):%ld\n", strlen(comanda));
 				if(strcmp(comanda,"REGISTER")==0){
-					printf("da, register");
 					char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
 					char nume[1000];
 					char parola[1000];
@@ -603,7 +558,6 @@ int main ()
 
 				}//--------------------------------------------------------------LOGIN--------------------------------------------------------------
 				else if(strcmp(comanda,"LOGIN")==0){
-					printf("da, login");
 					char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
 					char nume[1000];
 					char parola[1000];
@@ -662,7 +616,6 @@ int main ()
 
 				}////--------------------------------------------------------------EXIT--------------------------------------------------------------
 				else if(strcmp(comanda,"EXIT")==0){
-					printf("da, login");
 					char msgrasp[1000]=" ";        //mesaj de raspuns pentru client
 					printf("[server]Trimitem mesajul inapoi...%s\n",msgrasp);
 
@@ -786,24 +739,10 @@ int main ()
 							}
 						}
 						sendMessageFromPerson1ToPerson2(myUsername,nameToSend,msgrasp);
-						//int messagesNo=getNewMessages(myUsername,nameFrom,messages);
-						//addTheNewMessagesToHistory(nameToSend,myUsername);
 						char messages[50][100];
 						int idRows[50];
 						int messagesNo=getNewMessages(nameToSend,myUsername,messages, idRows);
 						addTheNewMessagesToHistory(nameToSend,myUsername);
-						printf("getNewMessages()=%d\n",messagesNo);
-						/*
-						if(messagesNo){
-							deleteNewMessages(nameToSend,myUsername);
-							bzero(msgrasp,1000);
-							for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
-								strcat(msgrasp,"\n");
-								strcat(msgrasp,messages[indexMessage]);
-							}
-							//strcat(msgrasp,"\n");
-						}
-						*/
 						bzero(msgrasp,1000);
 						strcpy(msgrasp,"The message has been sent.");
 						if (write (client, msgrasp, 1000) <= 0)
@@ -917,8 +856,6 @@ int main ()
 							continue;		/* continuam sa ascultam */
 						}
 						messagesNo=getMessagesHistoryBetweenName1AndName2(myUsername,name2,messages);
-						printf("In ( If Conversation ):\n");
-						printf("______messagesNo:%d\n",messagesNo);
 						bzero(msgrasp,1000);
 						strcpy(msgrasp,"\n");
 						for(int indexMessage=0; indexMessage<messagesNo; indexMessage++){
@@ -927,9 +864,6 @@ int main ()
 						}
 						strcat(msgrasp,"\n");
 						deleteNewMessages(myUsername,name2);
-						printf("&&&&&&&&&&&&mesages[0]=%s\n",messages[0]);
-						printf("&&&&&&&&&&&&mesages[1]=%s\n",messages[1]);
-						printf("\n\nmsgrasp:\n%s\n\n",msgrasp);
 						/* returnam mesajul clientului */
 						if (write (client, msgrasp, 1000) <= 0)
 						{
